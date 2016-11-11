@@ -1,0 +1,344 @@
+/*
+- I can create recipes that have names and ingredients.
+- I can see an index view where the names of all the recipes are visible.
+- I can click into any of those recipes to view it.
+- I can edit these recipes.
+- I can delete these recipes.
+- All new recipes I add are saved in my browser's local storage. If I refresh the page, these recipes will still be there.
+*/
+/*
+recipebox model
+  recipebox
+    id
+    category
+    name
+    serves
+    ingredients
+    method
+    comment
+*/
+// clear the console
+console.clear();
+
+// import components from ReactBootstrap
+let {
+  Alert,
+  Button,
+  Modal,
+  FormControl,
+  FormGroup,
+  ControlLabel,
+  HelpBlock
+} = ReactBootstrap;
+let recipebox = [
+  {
+    id: 0,
+    category: "Dips",
+    recipename: "Mediteranean Salsa",
+    serves: "6-12",
+    ingredients: "2 cups cucumbers, 1 cup tomatoes, 2 cups mangoes",
+    method: "Chop all ingredients into small pieces then mix together thoroughly. Should be consumed within half an hour of making.",
+    comment: "Just like momma used to make!"
+  }, {
+    id: 1,
+    category: "Drinks",
+    recipename: "Iced Tea",
+    serves: "1 thirsty person",
+    ingredients: "several tablespoons iced tea drink mix, 2 cups water",
+    method: "Mix the iced tea mix into the water and stir well. Repeat as desired.",
+    comment: "Great on a hot day!"
+  }, {
+    id: 2,
+    category: "Sandwiches",
+    recipename: "Peanut Butter and Jelly Sandwich",
+    serves: "2",
+    ingredients: "2 tablespoons peanut butter, 2 tablespoons strawberry jelly, 2 slices of bread",
+    method: "Spread peanut butter on one slice of bread and jelly on the other. Press both slices together. Cut in half if desired.",
+    comment: "Enjoy with juice."
+  }
+];
+
+// local storage
+function storageAvailable(type) {
+  try {
+    let storage = window[type]
+    let x = '__storage_test__';
+    storage.setItem(x, x);
+    storage.removeItem(x);
+    return true;
+  }
+  catch(e) {
+    return false;
+  }
+}
+if (storageAvailable('localStorage')) {
+  // we can use localStorage
+  if(!localStorage.getItem('_andydlindsay_recipebox')) {
+    populateStorage();
+  }
+} else {
+  // localStorage is not available
+  console.log("No localStorage available.");
+}
+function populateStorage() {
+  localStorage.setItem('_andydlindsay_recipebox', JSON.stringify(recipebox));
+}
+
+// title component
+class Title extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  render() {
+    let titleClass = 'text-center heading-text-one';
+    let codedByClass = 'text-center heading-text-two';
+    return (
+      <div>
+        <h1 className={titleClass}>{this.props.title}</h1>
+        <h5 className={codedByClass}>Coded by <a target="_blank" href="https://www.freecodecamp.com/andydlindsay">Andy Lindsay</a></h5>
+      </div>
+    );
+  }
+}
+Title.propTypes = {
+  title: React.PropTypes.string
+}
+Title.defaultProps = {
+  title: "Title"
+}
+
+// ingredients
+class Ingredients extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  render() {
+    // const Ingredient = this.props.ingredients.map((ingredient, id) => {
+    //   return (
+    //     <h5 key={id}>{ingredient.qty} {ingredient.name}</h5>
+    //   );
+    // });
+    const Ingredient = this.props.ingredients.split(',').map((ingredient, id) => {
+      return (
+        <h5 key={id}>{ingredient}</h5>
+      );
+    });
+    return (
+      <div>{Ingredient}</div>
+    );
+  }
+}
+
+// return FormGroup based on arguments
+function FieldGroup({ id, label, help, ...props }) {
+  return (
+    <FormGroup controlId={id}>
+      <ControlLabel>{label}</ControlLabel>
+      <FormControl {...props} />
+      {help && <HelpBlock>{help}</HelpBlock>}
+    </FormGroup>
+  );
+}
+
+// add/edit recipe form
+class RecipeForm extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  updateRecipeProp(propname, event) {
+    this.props.recipe[propname] = event.target.value;
+    this.props.updateStorage();
+    this.forceUpdate();
+  }
+  render() {
+    return (
+      <div>
+        <form>
+          <FieldGroup 
+            id="recipename" 
+            type="text" 
+            label="Recipe Name" 
+            onChange={this.updateRecipeProp.bind(this, "recipename")}
+            value={this.props.recipe.recipename}
+          />
+          <FieldGroup 
+            id="category" 
+            type="text" 
+            label="Category" 
+            onChange={this.updateRecipeProp.bind(this, "category")}
+            value={this.props.recipe.category}
+          />
+          <FieldGroup 
+            id="serves" 
+            type="text" 
+            label="Serves" 
+            onChange={this.updateRecipeProp.bind(this, "serves")}
+            value={this.props.recipe.serves}
+          />
+          <FieldGroup 
+            id="ingredients" 
+            type="text" 
+            componentClass="textarea" 
+            label="Ingredients" 
+            help="Separate ingredients with a comma." 
+            onChange={this.updateRecipeProp.bind(this, "ingredients")}
+            value={this.props.recipe.ingredients}
+          />
+          <FieldGroup 
+            id="method" 
+            type="text" 
+            componentClass="textarea" 
+            label="Method" 
+            onChange={this.updateRecipeProp.bind(this, "method")}
+            value={this.props.recipe.method}
+          />
+          <FieldGroup 
+            id="comment" 
+            type="text" 
+            label="Comment" 
+            onChange={this.updateRecipeProp.bind(this, "comment")}
+            value={this.props.recipe.comment}
+          />
+        </form>
+      </div>
+    );
+  }
+}
+
+// add/edit recipe modal
+class NewRecipe extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      message: ""
+    }
+  }
+  saveRecipe() {
+    if (this.props.recipe.id === undefined) {
+      if (this.props.recipe.ingredients !== undefined && this.props.recipe.recipename !== undefined) {
+        this.props.recipe.id = Math.floor(Math.random() * 10000);
+        this.props.addRecipe(this.props.recipe);
+        this.state.message = "";
+        this.props.updateStorage();
+        this.props.closeModal();
+      } else {
+        this.state.message = "You must enter a recipe name and at least one ingredient.";
+      }
+    } else {
+      this.props.closeModal();
+    }
+    console.log(this.state.message);
+  }
+  render() {
+    let recipeName = this.props.recipe.recipename === undefined ? "New Recipe" : this.props.recipe.recipename;
+    return (
+      <div>
+        <Modal show={this.props.show} onHide={() => {this.props.closeModal()}}>
+          <Modal.Header closeButton>
+            <Modal.Title><b>{ recipeName }</b></Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <RecipeForm updateStorage={this.props.updateStorage} recipe={this.props.recipe}/>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button onClick={() => { this.saveRecipe() }} bsStyle="primary">Save</Button>
+          </Modal.Footer>
+        </Modal>
+    </div>
+    );
+  }
+}
+
+// recipe box
+class RecipeBox extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      recipebox: JSON.parse(localStorage.getItem('_andydlindsay_recipebox')),
+      showModal: false,
+      activeRecipe: {}
+    }
+  }
+  deleteRecipe(id) {
+    let remainingItems = this.state.recipebox.filter(function(el) {
+      return id !== el.id;
+    });
+    this.setState({
+      recipebox: remainingItems
+    });
+    localStorage.setItem('_andydlindsay_recipebox', JSON.stringify(remainingItems));
+  }
+  addRecipe(recipe) {
+    this.state.recipebox.push(recipe)
+  }
+  closeModal() {
+    this.setState({
+      showModal: false
+    });
+  }
+  openModal(activeRecipe) {
+    this.setState({
+      showModal: true,
+      activeRecipe
+    });
+  }
+  updateStorage() {
+    localStorage.setItem('_andydlindsay_recipebox', JSON.stringify(this.state.recipebox));
+  }
+  render() {
+    const RecipeComponents = this.state.recipebox.map((recipe, id) => {
+      return (
+        <div key={recipe.id} className="panel panel-default">
+          <div className="panel-heading">
+            <h2 className="panel-title">
+              <a data-toggle="collapse" data-parent="#accordion" href={'#collapse' + id}>{recipe.recipename}</a>
+            </h2>
+          </div>
+          <div id={'collapse' + id} className="panel-collapse collapse">
+            <div className="panel-body">
+              <h4 className="float-left">Category: {recipe.category}</h4>
+              <h4 className="float-right comment-text text-right">{recipe.comment}</h4>
+              <h4 className="clear-left">Serves: {recipe.serves}</h4>
+              <Ingredients ingredients={recipe.ingredients} />
+              <h4>{recipe.method}</h4>
+              <Button bsStyle="primary" onClick={() => {this.openModal(recipe)}}>Edit Recipe</Button>
+              <button type="button" onClick={() => { this.deleteRecipe(recipe.id) }} className="btn btn-warning">Delete Recipe</button>
+            </div>
+          </div>
+        </div>
+      );
+    }, this);
+    return (
+      <div className="recipe-text">
+        <div id="accordion" className="panel-group rounded-corners">
+          {RecipeComponents}
+        </div>
+        <div>
+          <Button bsStyle="primary" onClick={() => {this.openModal({})}}>Add Recipe</Button>
+        </div>
+        <NewRecipe show={this.state.showModal} recipe={this.state.activeRecipe} updateStorage={this.updateStorage.bind(this)} addRecipe={this.addRecipe.bind(this)} closeModal={this.closeModal.bind(this)} />
+      </div>
+    );
+  }
+}
+
+// app component
+class App extends React.Component {
+  constructor() {
+    super();
+  }
+  render() {
+    return (
+      <div className="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 col-lg-6 col-lg-offset-3">
+        <Title title="Recipe Box"/>
+        <div id="accordion rounded-corners">
+          <RecipeBox />
+        </div>
+      </div>
+    );
+  }
+
+}
+
+// render app
+ReactDOM.render(<App />, document.getElementById('app'));
